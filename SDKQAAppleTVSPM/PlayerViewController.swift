@@ -54,7 +54,29 @@ final class PlayerViewController: UIViewController {
 
     // MARK: - Layout
 
+    /// En tvOS, `AVPlayerViewController` —que es lo que el SDK usa por dentro— está
+    /// pensado para presentarse a pantalla completa. Con el player en un contenedor chico
+    /// puede no reproducir, así que este modo lo pone a pantalla completa y saca el panel
+    /// de eventos, para poder separar "el SDK no reproduce" de "el layout no le sirve".
+    private var isFullscreen: Bool {
+        ProcessInfo.processInfo.arguments.contains("--fullscreen")
+    }
+
     private func buildLayout() {
+        if isFullscreen {
+            playerContainer.backgroundColor = .black
+            playerContainer.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(playerContainer)
+            NSLayoutConstraint.activate([
+                playerContainer.topAnchor.constraint(equalTo: view.topAnchor),
+                playerContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+                playerContainer.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+                playerContainer.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            ])
+            view.layoutIfNeeded()
+            return
+        }
+
         playerContainer.backgroundColor = .black
         playerContainer.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(playerContainer)
@@ -118,6 +140,7 @@ final class PlayerViewController: UIViewController {
 
         setNeedsFocusUpdate()
         updateFocusIfNeeded()
+
     }
 
     private func teardown() {

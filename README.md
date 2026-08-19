@@ -92,6 +92,18 @@ configurando el `config` —por ejemplo manipular el player después del `setup`
 Para una categoría nueva, agregar el `case` a `TestCase.Category` y la lista se reorganiza
 sola.
 
+## Modo pantalla completa
+
+```bash
+xcrun devicectl device process launch --device <dev> am.mediastre.SDKQAAppleTVSPM --case 0 --fullscreen
+```
+
+Saca el panel de eventos y deja el player ocupando toda la pantalla. Existe porque en tvOS
+`AVPlayerViewController` —que es lo que el SDK usa por dentro— está pensado para pantalla
+completa, así que sirve para separar "el SDK no reproduce" de "el layout no le sirve al
+player". En las pruebas de la migración quedó descartado que el layout fuera el problema:
+con el player a `(0, 0, 1920, 1080)` el resultado es el mismo.
+
 ## Abrir un caso sin control remoto
 
 ```bash
@@ -125,9 +137,15 @@ Cuando 2.1.0 se publique a producción, conviene mover esta app a `Up to Next Ma
 - **Simulador de tvOS:** el VOD reproduce el preroll de IMA y los eventos llegan, pero el
   contenido principal puede fallar con `CoreMediaErrorDomain -66681`, porque el simulador no
   decodifica HE-AAC (`mp4a.40.5`), que es el audio que sirve el CDN.
-- **Apple TV con tvOS 26.6:** en las pruebas de la migración el SDK no emitió ningún evento
-  en dispositivo, y se comportó igual construido por SPM que por CocoaPods, así que no es de
-  la distribución. Está anotado para mirarlo aparte.
+- **Apple TV con tvOS 26.6:** el SDK no emite ningún evento en dispositivo. No es de la
+  distribución —se comporta igual construido por SPM que por CocoaPods— ni del layout. Lo
+  que se pudo acotar: `playerViewController` sigue en `nil` 40 s después de `setup()`, y ese
+  punto está *después* de parsear el JSON del media, así que el SDK nunca llega ahí. El
+  mismo request HTTP a la API del media desde la misma app devuelve 200 con 6002 bytes, y
+  `releasePlayer()` nunca corre, así que no es el guard de `wasReleased`. El fallo queda
+  acotado a `RestApiManager.makeHTTPGetRequest`, que tiene tres `guard ... else { return }`
+  que retornan sin loguear nada. Está anotado para mirarlo aparte: si es el SDK en tvOS 26,
+  afecta a los usuarios actuales y es más grande que esta migración.
 
 ## Documentación del SDK
 
