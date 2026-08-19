@@ -53,6 +53,17 @@ El layout es lado a lado y no apilado como en la app de iOS porque la pantalla e
 apaisada: un player arriba y una lista abajo desperdicia el ancho y deja el log en una franja
 de pocas líneas.
 
+**El panel de eventos no es enfocable, y eso es deliberado.** En tvOS quien tiene el foco
+recibe el control remoto, así que una tabla enfocable al lado del player se lo roba: a partir
+de ahí no se puede dar play, pausar ni navegar, y con `customUI` la UI del SDK no vuelve a
+aparecer nunca. El log no necesita foco porque se auto-desplaza al último evento. El foco es
+siempre del player.
+
+Los casos con `customUI` se presentan **a pantalla completa**, sin el panel al costado: la UI
+custom del SDK se ancla a los bordes de la vista del player, así que en un contenedor al 62%
+del ancho queda apretada y no se comporta como en una app real. Se marca con
+`fullscreen: true` en el caso.
+
 Se escuchan **todos** los eventos que publica el SDK de tvOS, aunque un caso concreto dispare
 solo unos pocos: un evento ausente es tan reportable como uno incorrecto. La excepción es
 `currentTimeUpdate`, que se emite varias veces por segundo y tapa el resto; está comentado en

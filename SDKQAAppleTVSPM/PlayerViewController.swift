@@ -39,6 +39,12 @@ final class PlayerViewController: UIViewController {
         loadPlayer()
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        setNeedsFocusUpdate()
+        updateFocusIfNeeded()
+    }
+
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         if isMovingFromParent { teardown() }
@@ -47,9 +53,11 @@ final class PlayerViewController: UIViewController {
     /// El foco arranca en el player, no en la tabla de eventos: lo que se prueba es la
     /// reproducción, y en tvOS quien tiene el foco recibe el control remoto. La tabla se
     /// alcanza moviendo a la derecha.
+    /// El foco es siempre del player. Antes caia en la tabla de eventos y no habia forma de
+    /// recuperarlo.
     override var preferredFocusEnvironments: [UIFocusEnvironment] {
         if let player = sdk { return [player.view] }
-        return [logTable]
+        return []
     }
 
     // MARK: - Layout
@@ -59,7 +67,7 @@ final class PlayerViewController: UIViewController {
     /// puede no reproducir, así que este modo lo pone a pantalla completa y saca el panel
     /// de eventos, para poder separar "el SDK no reproduce" de "el layout no le sirve".
     private var isFullscreen: Bool {
-        ProcessInfo.processInfo.arguments.contains("--fullscreen")
+        testCase.fullscreen || ProcessInfo.processInfo.arguments.contains("--fullscreen")
     }
 
     private func buildLayout() {
@@ -91,6 +99,11 @@ final class PlayerViewController: UIViewController {
         view.addSubview(headerLabel)
 
         logTable.dataSource = self
+        // Sin foco a proposito. En tvOS quien tiene el foco recibe el control remoto, y una
+        // tabla enfocable al lado del player se lo roba: a partir de ahi no se puede dar
+        // play, pausar ni navegar, y con customUI la UI del SDK no vuelve a aparecer. El log
+        // no necesita foco porque se auto-desplaza al ultimo evento.
+        logTable.isUserInteractionEnabled = false
         logTable.backgroundColor = .qaPanel
         logTable.rowHeight = UITableView.automaticDimension
         logTable.estimatedRowHeight = 34

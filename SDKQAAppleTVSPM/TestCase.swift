@@ -23,8 +23,27 @@ struct TestCase {
     let title: String
     let detail: String
     let category: Category
+    /// Presenta el player ocupando toda la pantalla, sin el panel de eventos al costado.
+    ///
+    /// Necesario para los casos con `customUI`: la UI custom del SDK se ancla a los bordes
+    /// de la vista del player, así que en un contenedor al 62% del ancho queda apretada y
+    /// los controles compiten por el foco con el resto de la pantalla. En pantalla completa
+    /// se comporta como en una app real.
+    let fullscreen: Bool
     /// Se ejecuta sobre un `MediastreamPlayerConfig` nuevo antes del `setup`.
     let configure: (MediastreamPlayerConfig) -> Void
+
+    init(title: String,
+         detail: String,
+         category: Category,
+         fullscreen: Bool = false,
+         configure: @escaping (MediastreamPlayerConfig) -> Void) {
+        self.title = title
+        self.detail = detail
+        self.category = category
+        self.fullscreen = fullscreen
+        self.configure = configure
+    }
 
     // MARK: - Contenido
 
@@ -75,7 +94,8 @@ struct TestCase {
         // si los recursos no resuelven, acá se ve como controles en blanco o sin texto.
         TestCase(title: "VOD con UI custom",
                  detail: "Ejercita nibs, imágenes y traducciones del framework",
-                 category: .video) { config in
+                 category: .video,
+                 fullscreen: true) { config in
             base(config)
             config.id = Media.vod
             config.type = .VOD
