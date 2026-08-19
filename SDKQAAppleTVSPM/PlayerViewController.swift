@@ -34,7 +34,12 @@ final class PlayerViewController: UIViewController {
 
         buildLayout()
         EventLog.shared.clear()
-        EventLog.shared.onChange = { [weak self] in self?.reloadLog() }
+        // Solo se engancha si hay panel. A pantalla completa la tabla no tiene dataSource ni
+        // está en la jerarquía, y refrescarla lanzaba NSRangeException al llegar el primer
+        // evento: scrollToRow contra una tabla de cero filas.
+        if showsLog {
+            EventLog.shared.onChange = { [weak self] in self?.reloadLog() }
+        }
 
         loadPlayer()
     }
@@ -66,6 +71,9 @@ final class PlayerViewController: UIViewController {
     /// pensado para presentarse a pantalla completa. Con el player en un contenedor chico
     /// puede no reproducir, así que este modo lo pone a pantalla completa y saca el panel
     /// de eventos, para poder separar "el SDK no reproduce" de "el layout no le sirve".
+    /// A pantalla completa no hay panel de eventos, así que tampoco hay tabla que refrescar.
+    private var showsLog: Bool { !isFullscreen }
+
     private var isFullscreen: Bool {
         testCase.fullscreen || ProcessInfo.processInfo.arguments.contains("--fullscreen")
     }
@@ -169,6 +177,9 @@ final class PlayerViewController: UIViewController {
     // MARK: - Log
 
     private func reloadLog() {
+        // Defensa además del guard de arriba: el log sigue siendo un singleton y este
+        // callback no debería poder tocar una tabla que no está en pantalla.
+        guard showsLog, logTable.superview != nil else { return }
         logTable.reloadData()
         let last = EventLog.shared.entries.count - 1
         guard last >= 0 else { return }
