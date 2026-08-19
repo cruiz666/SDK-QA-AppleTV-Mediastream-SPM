@@ -153,6 +153,25 @@ Cuando 2.1.0 se publique a producción, conviene mover esta app a `Up to Next Ma
 
   En el simulador con tvOS 17.2 todo funciona, incluido el preroll de IMA.
 
+  **Pista fuerte, aportada desde la consola de Xcode:** junto al fallo aparecen estas dos
+  líneas, que por stdout no se ven y solo salen en el log unificado:
+
+  ```
+  `UIScene` lifecycle will soon be required. Failure to adopt will result in an assert…
+  <<<< FigApplicationStateMonitor >>>> signalled err=-19431
+  ```
+
+  `FigApplicationStateMonitor` es el componente de CoreMedia que decide si la app está en un
+  estado habilitado para reproducir. Una app que no adopta `UIScene` no le permite confirmar
+  que esté activa en primer plano, y el resultado encaja con el síntoma: el item no carga
+  nunca y no hay error. Por eso esta app **sí** adopta `UIScene` (ver `SceneDelegate.swift`);
+  las apps de ejemplo del SDK todavía no, y son todas pre-scene.
+
+  Queda por confirmar si eso alcanza: adoptándolo, en pruebas lanzadas por `devicectl`
+  seguía sin haber eventos, pero ese entorno no distingue esta causa de que la app no esté
+  en primer plano, y no da acceso al log unificado donde aparece el error. La verificación
+  buena es correr desde Xcode.
+
 ## Documentación del SDK
 
 Todo público, no hace falta acceso al repo privado del SDK:
