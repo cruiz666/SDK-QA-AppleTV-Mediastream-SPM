@@ -138,39 +138,33 @@ Cuando 2.1.0 se publique a producción, conviene mover esta app a `Up to Next Ma
 - **Simulador de tvOS:** el VOD reproduce el preroll de IMA y los eventos llegan, pero el
   contenido principal puede fallar con `CoreMediaErrorDomain -66681`, porque el simulador no
   decodifica HE-AAC (`mp4a.40.5`), que es el audio que sirve el CDN.
-- **Apple TV con tvOS 26.6:** el SDK no emite ningún evento y la pantalla queda negra.
-  **No es del SDK ni de la distribución.** Se recorrió el camino completo con sondas en el
-  dispositivo: el JSON del media llega (200, 6006 bytes), la URL HLS se resuelve bien, el
-  `AVURLAsset` reporta `isPlayable = true`, el `AVPlayerItem` se crea y queda adjunto al
-  `AVPlayer` — y ahí el `status` del item se queda en `.unknown` para siempre, sin error.
-  Como nunca llega a `.readyToPlay`, el SDK nunca crea el `AVPlayerViewController`, y de ahí
-  el negro y el silencio.
+- **Apple TV con tvOS 26.6: el SDK no reproduce.** Causa confirmada, y no es de la
+  distribución ni del stream ni del equipo.
 
-  Lo decisivo es el control: un `AVPlayerItem(url:)` pelado con el mismo HLS, sin `Asset`,
-  sin resource loader y sin una línea del SDK, se comporta **igual** en ese dispositivo. El
-  mismo `.m3u8` se descarga por `URLSession` desde el mismo Apple TV sin problema (200), así
-  que no es red. Es algo del stack de AVFoundation en ese equipo con ese stream.
+  En tvOS 26, un `AVPlayerItem` cuyo `AVPlayer` no tiene una salida adjunta a la jerarquía
+  de vistas **nunca sale de `.unknown`**, y no reporta error. El SDK esperaba
+  `.readyToPlay` *antes* de crear y adjuntar el `AVPlayerViewController`, así que le pedía
+  al item que cargara sin darle nunca una pantalla: abrazo mortal. El síntoma es pantalla
+  negra y silencio total, sin un solo evento ni error.
 
-  En el simulador con tvOS 17.2 todo funciona, incluido el preroll de IMA.
+  Cómo se llegó, en orden, todo medido en el dispositivo:
 
-  **Pista fuerte, aportada desde la consola de Xcode:** junto al fallo aparecen estas dos
-  líneas, que por stdout no se ven y solo salen en el log unificado:
+  | Prueba | Resultado |
+  |---|---|
+  | Stream de prueba de Apple con AVKit puro, vista adjunta (`--applehls`) | ✅ reproduce |
+  | **Nuestro** m3u8 con AVKit puro, vista adjunta (`--applehls --mdstrm <url>`) | ✅ reproduce |
+  | El SDK, que adjunta la vista después de `.readyToPlay` | ❌ item en `.unknown` para siempre |
+  | El SDK, avisando antes para que adjunte primero | ✅ `/init`, `/start`, `joinTime` 2032 ms |
 
-  ```
-  `UIScene` lifecycle will soon be required. Failure to adopt will result in an assert…
-  <<<< FigApplicationStateMonitor >>>> signalled err=-19431
-  ```
+  Descartados en el camino con evidencia: la distribución (idéntico por SPM y por
+  CocoaPods), la red (el `.m3u8` se descarga por `URLSession` desde el mismo equipo),
+  `RestApiManager` (sus tres guards silenciosos pasan todos), el tamaño del contenedor
+  (idéntico a pantalla completa), y `UIScene` (adoptarlo hace desaparecer el aviso pero no
+  arregla la reproducción).
 
-  `FigApplicationStateMonitor` es el componente de CoreMedia que decide si la app está en un
-  estado habilitado para reproducir. Una app que no adopta `UIScene` no le permite confirmar
-  que esté activa en primer plano, y el resultado encaja con el síntoma: el item no carga
-  nunca y no hay error. Por eso esta app **sí** adopta `UIScene` (ver `SceneDelegate.swift`);
-  las apps de ejemplo del SDK todavía no, y son todas pre-scene.
-
-  Queda por confirmar si eso alcanza: adoptándolo, en pruebas lanzadas por `devicectl`
-  seguía sin haber eventos, pero ese entorno no distingue esta causa de que la app no esté
-  en primer plano, y no da acceso al log unificado donde aparece el error. La verificación
-  buena es correr desde Xcode.
+  El `FigApplicationStateMonitor err=-19431` que aparece en la consola de Xcode acompaña al
+  fallo pero no fue la causa. Vale saber que ni ese mensaje ni el aviso de `UIScene` salen
+  por stdout: con `devicectl --console` son invisibles y solo se ven corriendo desde Xcode.
 
 ## Documentación del SDK
 

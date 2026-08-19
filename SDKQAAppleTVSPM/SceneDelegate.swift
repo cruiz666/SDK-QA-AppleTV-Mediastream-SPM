@@ -27,6 +27,14 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         let window = UIWindow(windowScene: windowScene)
+        // Control de aislamiento con AVKit puro. Ver ControlVC.
+        if ProcessInfo.processInfo.arguments.contains("--applehls") {
+            window.rootViewController = ControlVC()
+            window.makeKeyAndVisible()
+            self.window = window
+            return
+        }
+
         let nav = UINavigationController(rootViewController: ViewController())
         window.rootViewController = nav
         window.makeKeyAndVisible()
