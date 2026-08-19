@@ -116,7 +116,7 @@ desatendida, y para que un reporte de bug diga exactamente cómo reproducirlo en
 
 ## Qué versión del SDK usa
 
-Está fijada a **`2.1.0-dev.1`**, un build del canal de desarrollo. La versión que la app
+Está fijada a **`2.1.0-dev.2`**, un build del canal de desarrollo. La versión que la app
 muestra al pie de la lista y en cada caso sale de `getVersion()`, que la lee del bundle del
 framework — no de una constante — así que siempre corresponde al binario que se está
 probando. Eso vale al reportar: el número es verificable, no de memoria.
@@ -138,33 +138,25 @@ Cuando 2.1.0 se publique a producción, conviene mover esta app a `Up to Next Ma
 - **Simulador de tvOS:** el VOD reproduce el preroll de IMA y los eventos llegan, pero el
   contenido principal puede fallar con `CoreMediaErrorDomain -66681`, porque el simulador no
   decodifica HE-AAC (`mp4a.40.5`), que es el audio que sirve el CDN.
-- **Apple TV con tvOS 26.6: el SDK no reproduce.** Causa confirmada, y no es de la
-  distribución ni del stream ni del equipo.
+- **tvOS 26 (corregido en `2.1.0-dev.2`).** Hasta esa versión el SDK no reproducía en
+  tvOS 26: pantalla negra, sin un evento ni un error. Desde tvOS 26, un `AVPlayerItem` cuyo
+  `AVPlayer` no tiene una salida adjunta a la jerarquía de vistas nunca sale de `.unknown`,
+  y el SDK creaba el `AVPlayerViewController` recién al recibir `.readyToPlay`: le pedía al
+  item que cargara sin darle nunca una pantalla.
 
-  En tvOS 26, un `AVPlayerItem` cuyo `AVPlayer` no tiene una salida adjunta a la jerarquía
-  de vistas **nunca sale de `.unknown`**, y no reporta error. El SDK esperaba
-  `.readyToPlay` *antes* de crear y adjuntar el `AVPlayerViewController`, así que le pedía
-  al item que cargara sin darle nunca una pantalla: abrazo mortal. El síntoma es pantalla
-  negra y silencio total, sin un solo evento ni error.
+  No lo introdujo la migración. El código anterior a ella falla igual en tvOS 26.6 y
+  funciona en tvOS 17.2: la variable es la versión del sistema.
 
-  Cómo se llegó, en orden, todo medido en el dispositivo:
+  Verificado en un Apple TV 4K con tvOS 26.6 consumiendo `2.1.0-dev.2` desde el paquete:
+  reproduce contenido y ads (`onAdsLoaderInitialize`, `onAdLoaded`, `onAdPlay`, `onAdEnded`).
 
-  | Prueba | Resultado |
-  |---|---|
-  | Stream de prueba de Apple con AVKit puro, vista adjunta (`--applehls`) | ✅ reproduce |
-  | **Nuestro** m3u8 con AVKit puro, vista adjunta (`--applehls --mdstrm <url>`) | ✅ reproduce |
-  | El SDK, que adjunta la vista después de `.readyToPlay` | ❌ item en `.unknown` para siempre |
-  | El SDK, avisando antes para que adjunte primero | ✅ `/init`, `/start`, `joinTime` 2032 ms |
+  `ControlVC` (`--applehls`) quedó como herramienta: reproduce un HLS con AVKit puro y la
+  vista adjunta, sin nada del SDK. Es lo que permite descartar dispositivo, versión de tvOS,
+  red y stream antes de sospechar del SDK.
 
-  Descartados en el camino con evidencia: la distribución (idéntico por SPM y por
-  CocoaPods), la red (el `.m3u8` se descarga por `URLSession` desde el mismo equipo),
-  `RestApiManager` (sus tres guards silenciosos pasan todos), el tamaño del contenedor
-  (idéntico a pantalla completa), y `UIScene` (adoptarlo hace desaparecer el aviso pero no
-  arregla la reproducción).
-
-  El `FigApplicationStateMonitor err=-19431` que aparece en la consola de Xcode acompaña al
-  fallo pero no fue la causa. Vale saber que ni ese mensaje ni el aviso de `UIScene` salen
-  por stdout: con `devicectl --console` son invisibles y solo se ven corriendo desde Xcode.
+- **Simulador de tvOS:** el VOD reproduce el preroll de IMA, pero el contenido principal
+  puede fallar con `CoreMediaErrorDomain -66681` porque el simulador no decodifica HE-AAC
+  (`mp4a.40.5`), que es el audio que sirve el CDN. En dispositivo no pasa.
 
 ## Documentación del SDK
 

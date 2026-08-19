@@ -42,7 +42,7 @@ group.new_file("Info.plist")
 # GitHub, aca se ve.
 pkg = project.new(Xcodeproj::Project::Object::XCRemoteSwiftPackageReference)
 pkg.repositoryURL = "https://github.com/mediastream/MediastreamPlatformSDKAppleTV-spm.git"
-pkg.requirement   = { "kind" => "exactVersion", "version" => "2.1.0-dev.1" }
+pkg.requirement   = { "kind" => "exactVersion", "version" => "2.1.0-dev.2" }
 project.root_object.package_references << pkg
 
 dep = project.new(Xcodeproj::Project::Object::XCSwiftPackageProductDependency)
